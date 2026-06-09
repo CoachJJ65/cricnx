@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  phone         String?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  // Bank details for manual EFT payouts
+  bank_name     String?
+  account_number String?
+  branch_code   String?
+  account_type  String?
+
+  listings      Listing[] @relation("SellerListings")
+  purchases     Transaction[] @relation("BuyerPurchases")
+}
+
+model Listing {
+  id            String    @id @default(cuid())
+  seller_id     String
+  title         String
+  description   String
+  price         Float
+  condition     String    // e.g., "New", "Used", "Like New"
+  status        String    @default("AVAILABLE") // AVAILABLE, SOLD, CANCELLED
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  seller        User      @relation("SellerListings", fields: [seller_id], references: [id])
+  transaction   Transaction?
+}
+
+model Transaction {
+  id            String    @id @default(cuid())
+  listing_id    String    @unique
+  buyer_id      String
+  total_amount  Float
+  platform_fee  Float     // 15%
+  seller_payout Float     // 85%
+  status        String    @default("ESCROW") // ESCROW, COMPLETED, CANCELLED
+  payfast_id    String?   // Mock reference to payment gateway
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  listing       Listing   @relation(fields: [listing_id], references: [id])
+  buyer         User      @relation("BuyerPurchases", fields: [buyer_id], references: [id])
+}
